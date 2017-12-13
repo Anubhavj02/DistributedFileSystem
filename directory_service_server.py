@@ -8,6 +8,7 @@ from flask import jsonify
 from flask import request
 from pymongo import MongoClient  # Package to interact with MongoDB
 import server_messages_list  # File containing description of every error
+import flask
 
 app = Flask(__name__)
 
@@ -82,13 +83,13 @@ def file_upload():
 
     # Check if the files exists in the server
     if not distributed_file_system_db.dfs_files.find_one(
-            {"dir_name": req_decrypted_filename, "directory": file_directory['dir_identifier'],
+            {"file_name": req_decrypted_filename, "directory": file_directory['dir_identifier'],
              "dir_server": get_server_object()["dir_identifier"]}):
         print "\n-- Requested File does not exist, create the file and insert the file details in DB --\n"
         hash_key = hashlib.md5()
         hash_key.update(file_directory['dir_identifier'] + "/" + file_directory['dir_name'] + "/" + get_server_object()[
             'dir_identifier'])
-        distributed_file_system_db.dfs_files.insert({"dir_name": req_decrypted_filename
+        distributed_file_system_db.dfs_files.insert({"file_name": req_decrypted_filename
                                                     , "directory": file_directory['dir_identifier']
                                                     , "dir_server": get_server_object()["dir_identifier"]
                                                     , "dir_identifier": hash_key.hexdigest()
@@ -107,15 +108,58 @@ def file_upload():
                     "dir_identifier"])
 
         file_details = distributed_file_system_db.dfs_files.find_one(
-            {"dir_name": req_decrypted_filename, "directory": file_directory['dir_identifier'],
+            {"file_name": req_decrypted_filename, "directory": file_directory['dir_identifier'],
              "dir_server": get_server_object()["dir_identifier"]})
     else:
         print "\n-- File exists, fetch the details of the file --\n"
         file_details = distributed_file_system_db.dfs_files.find_one(
-            {"dir_name": req_decrypted_filename, "directory": file_directory['dir_identifier'],
+            {"file_name": req_decrypted_filename, "directory": file_directory['dir_identifier'],
              "dir_server": get_server_object()["dir_identifier"]})
     return jsonify({'success': True,
                     'Message': server_messages_list.UPLOAD_SUCCESS})
+
+
+@app.route('/fileOperations/downloadFile', methods=['POST'])
+def file_download():
+    print "\n-- DOWNLOAD FILE REQUEST FROM THE USER --\n"
+    req_headers = request.headers
+    # Get the details from the header
+    req_encrypted_filename = req_headers['file_name']
+    req_encrypted_directory = req_headers['file_directory']
+    req_access_key = req_headers['access_key']
+    user_session_id = decrypt_string(AUTH_KEY, req_access_key).strip()
+    req_decrypted_directory = decrypt_string(user_session_id, req_encrypted_directory)
+    req_decrypted_filename = decrypt_string(user_session_id, req_encrypted_filename)
+
+    hash_key = hashlib.md5()
+    hash_key.update(req_decrypted_directory)
+
+    # First find the file directory
+    file_directory = distributed_file_system_db.dfs_directories.find_one(
+        {"dir_name": req_decrypted_directory, "dir_identifier": hash_key.hexdigest(),
+         "dir_server": get_server_object()["dir_identifier"]})
+
+    # If directory does not exist return error
+    if not file_directory:
+        return jsonify({"success": False,
+                        "Message": server_messages_list.DIRECTORY_ERROR})
+
+    # Now find the details of the files from the DB
+    file_details = distributed_file_system_db.dfs_files.find_one(
+        {"file_name": req_decrypted_filename, "directory": file_directory['identifier'],
+         "dir_server": get_server_object()["dir_identifier"]})
+
+    # If file does not exists return error
+    if not file_details:
+        return jsonify({"success": False})
+
+    # Perform caching
+    cache_hash = file_details['dir_identifier'] + "/" + file_directory['dir_identifier'] + "/" + get_server_object()[
+        "dir_identifier"]
+    if file_cache.get(cache_hash):
+        return file_cache.get(cache_hash)
+    else:
+        return flask.send_file(file_details['dir_identifier'])
 
 
 if __name__ == '__main__':
