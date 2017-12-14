@@ -41,7 +41,7 @@ distributed_file_system_db.dfs_servers.insert(
     {"dir_identifier": hashed_key.hexdigest(), "server_host": "localhost", "server_port": "9002", "master": False,
      "active": False})
 
-hashed_key.update("localhost" + ":" + "9002")
+hashed_key.update("localhost" + ":" + "9003")
 distributed_file_system_db.dfs_servers.insert(
     {"dir_identifier": hashed_key.hexdigest(), "server_host": "localhost", "server_port": "9003", "master": False,
      "active": False})
