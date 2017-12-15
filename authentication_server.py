@@ -65,8 +65,6 @@ def user_creation():
     user_password = request_data.get('user_password')
     public_key = request_data.get('public_key')
 
-    # Generating random public key for every user that requests
-
     # Encrypting user password using public key and AES algorithm
     encrypted_user_password = base64.b64encode(AES.new(public_key, AES.MODE_ECB).encrypt(user_password))
 
