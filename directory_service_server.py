@@ -204,8 +204,11 @@ def file_download():
 
     # If file does not exists return error
     if not file_details:
+        server_transaction_service.insert_transaction(file_details["file_name"] + file_directory['dir_name'], get_server_object(), "ERROR")
         return jsonify({"success": False})
 
+    server_transaction_service.insert_transaction(file_details["file_name"] + file_directory['dir_name'],
+                                                  get_server_object(), "COMPLETED")
     return file_details['dir_identifier']
 
 
@@ -243,11 +246,15 @@ def file_read():
 
     # If file does not exists return error
     if not file_details:
+        server_transaction_service.insert_transaction(file_details["file_name"] + file_directory['dir_name'],
+                                                      get_server_object(), "ERROR")
         return jsonify({"success": False})
 
     # Perform caching
     cache_hash = file_details['dir_identifier'] + "/" + file_directory['dir_identifier'] + "/" + get_server_object()[
         "dir_identifier"]
+    server_transaction_service.insert_transaction(file_details["file_name"] + file_directory['dir_name'],
+                                                  get_server_object(), "COMPLETED")
     if file_cache.get(cache_hash):
         return file_cache.get(cache_hash)
     else:

@@ -3,6 +3,7 @@ from flask import Flask
 import threading
 from diskcache import Cache
 import requests
+import hashlib
 from flask_pymongo import PyMongo
 
 # Thread lock to hold the process until a thread has completed its job
@@ -70,7 +71,42 @@ class TransactionServer:
                 # Check the file upload status
                 if check_upload_file_request.status_code == SERVER_RESPONSE_CODE:
                     print "File Uploaded Successfully"
+                    insert_transaction(file_info + directory, dfs_server, "COMPLETED")
                 else:
                     print "File Upload Problem"
+                    insert_transaction(file_info + directory, dfs_server, "ERROR")
+
+
+def insert_transaction(file_name, server_details, response_status):
+    hash_key = hashlib.md5()
+    hash_key.update(file_name)
+    transaction = distributed_file_system_db.dfs_transactions.find_one({"trans_id": hash_key.hexdigest()})
+    if transaction:
+        transaction["logs"] = response_status
+    else:
+        distributed_file_system_db.dfs_transactions.insert(
+            {"trans_id": hash_key.hexdigest(), "logs": response_status, "server-id": server_details['dir_identifier']})
+
+
+def get_transaction(name):
+    hash_key = hashlib.md5()
+    hash_key.update(name)
+    return distributed_file_system_db.dfs_transactions.find_one({"trans_id": hash_key.hexdigest()})
+
+
+def get_success_count():
+    count = 0
+    for transaction in distributed_file_system_db.dfs_transactions.find():
+        if transaction['logs'] == "COMPLETED":
+            count += 1
+    return count
+
+
+def get_failure_count():
+    count = 0
+    for transaction in distributed_file_system_db.dfs_transactions.find():
+        if transaction['logs'] == "ERROR":
+            count += 1
+    return count
 
 
