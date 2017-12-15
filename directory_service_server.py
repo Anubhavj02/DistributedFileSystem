@@ -206,6 +206,45 @@ def file_download():
     if not file_details:
         return jsonify({"success": False})
 
+    return file_details['dir_identifier']
+
+
+@app.route('/fileOperations/readFile', methods=['POST'])
+def file_read():
+    """function to read file from the server
+    """
+    print "\n-- DOWNLOAD FILE REQUEST FROM THE USER --\n"
+    req_headers = request.headers
+    # Get the details from the header
+    req_encrypted_filename = req_headers['file_name']
+    req_encrypted_directory = req_headers['file_directory']
+    req_access_key = req_headers['access_key']
+    user_session_id = decrypt_string(AUTH_KEY, req_access_key).strip()
+    req_decrypted_directory = decrypt_string(user_session_id, req_encrypted_directory)
+    req_decrypted_filename = decrypt_string(user_session_id, req_encrypted_filename)
+
+    hash_key = hashlib.md5()
+    hash_key.update(req_decrypted_directory)
+
+    # First find the file directory
+    file_directory = distributed_file_system_db.dfs_directories.find_one(
+        {"dir_name": req_decrypted_directory, "dir_identifier": hash_key.hexdigest(),
+         "dir_server": get_server_object()["dir_identifier"]})
+
+    # If directory does not exist return error
+    if not file_directory:
+        return jsonify({"success": False,
+                        "Message": server_messages_list.DIRECTORY_ERROR})
+
+    # Now find the details of the files from the DB
+    file_details = distributed_file_system_db.dfs_files.find_one(
+        {"file_name": req_decrypted_filename, "directory": file_directory['dir_identifier'],
+         "dir_server": get_server_object()["dir_identifier"]})
+
+    # If file does not exists return error
+    if not file_details:
+        return jsonify({"success": False})
+
     # Perform caching
     cache_hash = file_details['dir_identifier'] + "/" + file_directory['dir_identifier'] + "/" + get_server_object()[
         "dir_identifier"]
@@ -213,6 +252,50 @@ def file_download():
         return file_cache.get(cache_hash)
     else:
         return flask.send_file(file_details['dir_identifier'])
+
+
+@app.route('/fileOperations/writeFile', methods=['POST'])
+def file_write():
+    """function to write file from the server
+    """
+    print "\n-- DOWNLOAD FILE REQUEST FROM THE USER --\n"
+    req_headers = request.headers
+    # Get the details from the header
+    req_encrypted_filename = req_headers['file_name']
+    req_encrypted_directory = req_headers['file_directory']
+    req_access_key = req_headers['access_key']
+    file_data = req_headers['file_data']
+    user_session_id = decrypt_string(AUTH_KEY, req_access_key).strip()
+    req_decrypted_directory = decrypt_string(user_session_id, req_encrypted_directory)
+    req_decrypted_filename = decrypt_string(user_session_id, req_encrypted_filename)
+
+    hash_key = hashlib.md5()
+    hash_key.update(req_decrypted_directory)
+
+    # First find the file directory
+    file_directory = distributed_file_system_db.dfs_directories.find_one(
+        {"dir_name": req_decrypted_directory, "dir_identifier": hash_key.hexdigest(),
+         "dir_server": get_server_object()["dir_identifier"]})
+
+    # If directory does not exist return error
+    if not file_directory:
+        return jsonify({"success": False,
+                        "Message": server_messages_list.DIRECTORY_ERROR})
+
+    # Now find the details of the files from the DB
+    file_details = distributed_file_system_db.dfs_files.find_one(
+        {"file_name": req_decrypted_filename, "directory": file_directory['dir_identifier'],
+         "dir_server": get_server_object()["dir_identifier"]})
+
+    # If file does not exists return error
+    if not file_details:
+        return jsonify({"success": False})
+
+    with open("./"+file_details['dir_identifier'], "a") as file:
+        file.write(file_data)
+
+    return jsonify({"success": False,
+                    "message": server_messages_list.WRITE_SUCCESS})
 
 
 if __name__ == '__main__':
