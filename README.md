@@ -118,13 +118,13 @@ When the user login with his user ID and password and if it is correct, user is 
 <br>
 The above file is responsible handling all the directory and file handling operations. It maps the human readable file names and directory names to a proper and unique identifier; and vice versa. All operations require user to be logged in and have the ticket with ssession Id and server details
 
-This enables the following operations:<br>
-* Upload a file: it takes user's file and the input directory and the unique ticket where the user wants to store the file. It checks whether the directory exists or otherwise creates it and same for the file creates it if doesn't
-exit
+	This enables the following operations:<br>
+	Upload a file: it takes user's file and the input directory and the unique ticket where the user wants to store the file. It checks whether the directory exists or otherwise creates it and same for the file creates it if doesn't
+	exit
 
-* Download File/ Read: By the file name and directory, and session ID, file details are fetched. And if file exists in cache it is read from there otherwise from the directory
+	Download File/ Read: By the file name and directory, and session ID, file details are fetched. And if file exists in cache it is read from there otherwise from the directory
 
-* Write File: By file name, directory and session Id, a dummy temporary file is create where user can write contents and the file locked until user closes it, then the lock is realsed and file changes are now commited from temp to original and cache is updated
+	Write File: By file name, directory and session Id, a dummy temporary file is create where user can write contents and the file locked until user closes it, then the lock is realsed and file changes are now commited from temp to original and cache is updated
 
 * Caching(server_transaction_service.py):
 Caching is used for faster access. File once uploaded are stored in cache and updated regularly upon write.
