@@ -97,4 +97,46 @@ Process finished with exit code 0
 ```
 
 ## Evaluating and understanding the system
-* Distributed Transparent File Access: 
+* **Distributed Transparent File Access(client_api.py):** 
+<br>For this part of the project, a client API was made so that the user/client can easily access the distributed file system with simple interface of command as shown in the file "testing_client/client.py". A client can use the API/client libarary to do the following things:
+	* Create a new user of the system
+	* Login to the system
+	* Download file
+	* Upload file
+	* Read file
+	* Write File
+
+* Security Service(authentication_server.py): 
+<br> A new user can be can be created by the userID, 16char password(its multiple as it is used in encryption with 32 char key), and a 32 char unique public key. Password is encrypted by the public key using AES encryption and then stored in DB
+<br><br>
+When the user login with his user ID and password and if it is correct, user is assigned with Unique Ticket to do further operations. When user requests for a login his passowrd is decrypted against the public key stored corresponding to the user in the DB and matched with the stored password in DB, if correct user is assigned a unique random session ID and Ticket which is composed of Session ID, server details and access_key of the server.
+
+  The user needs the Ticket details to interact with system as it contains server details and session ID used for further encryption of files and directories.
+  
+  
+* Directory Service(directory_service_server.py):
+<br>
+The above file is responsible handling all the directory and file handling operations. It maps the human readable file names and directory names to a proper and unique identifier; and vice versa. All operations require user to be logged in and have the ticket with ssession Id and server details
+
+	This enables the following operations:<br>
+	* Upload a file: it takes user's file and the input directory and the unique ticket where the user wants to store the file. It checks whether the directory exists or otherwise creates it and same for the file creates it if doesn't
+	exit
+    
+   	* Download File/ Read: By the file name and directory, and session ID, file details are fetched. And if file exists in cache it is read from there otherwise from the directory
+   	
+    * Write File: By file name, directory and session Id, a dummy temporary file is create where user can write contents and the file locked until user closes it, then the lock is realsed and file changes are now commited from temp to original and cache is updated
+
+* Caching(server_transaction_service.py):
+Caching is used for faster access. File once uploaded are stored in cache and updated regularly upon write.
+So once user request for file read or download it is directly accessed using the python Diskcache package 
+
+
+* Transaction(server_transaction_service.py):
+<br>
+All the transaction are stored and mapped into the DB and which server carried out this operation.
+The dfs_transaction db store all the details. When the files are uploaded, downloaded, or read all the transaction are stored with "COMPLETED" and "ERROR" message. 
+	Functions are implemented to get the total success and total failure count that can be used when the application is further scaled
+    
+
+* Lock (lock_server.py):
+<br>Locking is used to avoid simultaneous write operation into a same file. When a client is writing into the file, that file is locked and no other user can write into it until the user closes it, once it is closed the lock is released; other users can use it now. It is used to avoid deadlock and concurrent access 
