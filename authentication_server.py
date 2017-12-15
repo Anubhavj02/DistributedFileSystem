@@ -1,3 +1,4 @@
+import argparse
 import base64  # Used for encoding and decoding
 
 from Crypto.Cipher import AES  # Encryption of the keys using AES method
@@ -130,4 +131,18 @@ def user_authentication():
 
 
 if __name__ == '__main__':
-    app.run()
+    args_parser = argparse.ArgumentParser()
+    args_parser.add_argument(
+        '--server_host',
+        type=str,
+        default='127.0.0.1',
+        help='IP of server where it is hosted'
+    )
+    args_parser.add_argument(
+        '--server_port',
+        type=int,
+        default=5000,
+        help='port of the server'
+    )
+    ARGS, unparsed = args_parser.parse_known_args()
+    app.run(host=ARGS.server_host, port=ARGS.server_port)
